@@ -222,6 +222,8 @@ TransformationResult xpathTransformation::apply(xmlDocPtr doc, int position) con
     xmlXPathRegisterFuncNS(context.get(), (const xmlChar*)"is-valid-element",(xmlChar*)"http://www.srcML.org/srcML/srcQLImplementation",&is_valid_element);
     // WHERE Clause Functions
     xmlXPathRegisterFuncNS(context.get(), (const xmlChar*)"regex-match",(xmlChar*)"http://www.srcML.org/srcML/srcQLImplementation",&regex_match);
+    // srcSlice FIND functions
+    xmlXPathRegisterFuncNS(context.get(), (const xmlChar*)"slice-match",(xmlChar*)"http://www.srcML.org/srcML/srcQLImplementation",&slice_match);
     // Debug
     xmlXPathRegisterFuncNS(context.get(), (const xmlChar*)"debug-print",(xmlChar*)"http://www.srcML.org/srcML/srcQLImplementation",&debug_print);
 

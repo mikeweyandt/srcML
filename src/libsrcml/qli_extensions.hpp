@@ -24,6 +24,10 @@ void is_valid_element(xmlXPathParserContext* context, int nargs);
 
 void regex_match(xmlXPathParserContext* ctxt, int nargs);
 
+// srcSlice FIND functions
+
+void slice_match(xmlXPathParserContext* ctxt, int nargs);
+
 // Debugging functions
 
 void debug_print(xmlXPathParserContext* ctxt, int nargs);

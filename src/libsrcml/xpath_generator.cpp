@@ -211,6 +211,7 @@ XPathNode* XPathGenerator::get_xpath_from_argument(std::string src_pattern) {
 std::string XPathGenerator::convert() {
     std::vector<std::string> operations;
     std::vector<XPathNode*> source_exprs;
+    std::vector<std::string> find_types;
 
     std::vector<std::string> tokens = split(src_query, " ");
     /*****
@@ -230,10 +231,19 @@ std::string XPathGenerator::convert() {
     for (size_t i = 0; i < tokens.size(); ++i) {
         std::string token = tokens[i];
         // FIND - no-op, does nothing
-        if (token == "FIND") { /* Do nothing */}
+        if (token == "FIND") { 
+            find_types.push_back("FIND");
+        }
 
         // Other no-ops
-        else if (token == "BY") { /* Do nothing */ }
+        else if (token == "BY" || token == "OF") { /* Do nothing */ }
+
+        else if (token == "DECL" ||
+                 token == "DEFS" ||
+                 token == "USES" ||
+                 token == "SLICE") {
+            find_types[find_types.size() - 1] = token;
+        }
 
         // srcQL operators - save whatever the current built token is as the next expr
         else if (token == "CONTAINS"   ||
@@ -690,6 +700,55 @@ std::string XPathGenerator::convert() {
             }
             source_exprs[i]->add_child(and_predicate);
         }
+    }
+
+    // Check again if provided query was invalid
+    if (find_types.size() != source_exprs.size()) {
+        // Invalid query, return ""
+        return "";
+    }
+    // Apply any special FIND types to each source expression
+    for (size_t i = 0; i < source_exprs.size(); ++i) {
+        std::string find_type = find_types[i];
+        if (find_type == "FIND") { continue; }
+
+        if (find_type == "DECL") { find_type = "decl"; }
+        else if (find_type == "DEFS") { find_type = "def"; }
+        else if (find_type == "USES") { find_type = "use"; }
+        else if (find_type == "SLICE") { find_type = "*"; }
+
+
+
+        XPathNode* new_expr = new XPathNode("*",ANY);
+        XPathNode* predicate = new XPathNode("",PREDICATE);
+
+        new_expr->add_child(predicate);
+
+        XPathNode* match_call = new XPathNode("qli:slice-match",CALL);
+        predicate->add_child(match_call);
+
+        XPathNode* slice_target = new XPathNode(std::string("./@slice:")+find_type,NO_CONN);
+
+        match_call->add_child(slice_target);
+
+        XPathNode* attribute_selector = new XPathNode("@slice:*",NEXT);
+
+        source_exprs[i]->set_type(ANY);
+        source_exprs[i]->add_child(attribute_selector);
+
+        match_call->add_child(source_exprs[i]);
+
+        source_exprs[i] = new_expr;
+
+        // XPathNode* predicate = new XPathNode(std::string("@slice:")+find_type+"=",PREDICATE);
+        // XPathNode* string_call = new XPathNode("string",CALL);
+        // XPathNode* attribute_selector = new XPathNode("@slice:*",NEXT);
+        // new_expr->add_child(predicate);
+        // source_exprs[i]->set_type(ANY);
+        // source_exprs[i]->add_child(attribute_selector);
+        // predicate->add_child(string_call);
+        // string_call->add_child(source_exprs[i]);
+        // source_exprs[i] = new_expr;
     }
 
     /* FROM check

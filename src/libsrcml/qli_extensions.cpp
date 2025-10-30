@@ -81,6 +81,20 @@ namespace {
         get_node_text(top_node, s, true);
         return s;
     }
+
+    std::vector<std::string> split(std::string str, std::string delim) {
+    std::vector<std::string> res;
+    size_t pos = 0;
+    while (str.find(delim,pos) != std::string::npos) {
+        size_t end = str.find(delim,pos);
+        std::string sub = str.substr(pos,end-pos);
+        if (sub != "") { res.push_back(sub); }
+        pos = end + delim.size();
+    }
+    std::string sub = str.substr(pos,str.size()-pos);
+    if (sub != "") { res.push_back(sub); }
+    return res;
+}
 }
 
 void add_element(xmlXPathParserContext* ctxt, int nargs) {
@@ -324,6 +338,45 @@ void regex_match(xmlXPathParserContext* ctxt, int nargs) {
     table->add_regex_rule(identifier,regex);
 
     xmlXPathReturnBoolean(ctxt, true);
+}
+
+void slice_match(xmlXPathParserContext* ctxt, int nargs) {
+    if (nargs != 2) {
+        std::cerr << "Arg arity error" << std::endl;
+        return;
+    }
+
+    std::unique_ptr<xmlNodeSet> matching_slice_nodes(xmlXPathPopNodeSet(ctxt));
+    if (matching_slice_nodes.get() == NULL && xmlXPathCheckError(ctxt) == false) {
+        matching_slice_nodes = std::unique_ptr<xmlNodeSet>(xmlXPathNodeSetCreate(NULL));
+    }
+
+    std::unique_ptr<xmlNodeSet> target_slice_nodes(xmlXPathPopNodeSet(ctxt));
+    if (target_slice_nodes.get() == NULL && xmlXPathCheckError(ctxt) == false) {
+        target_slice_nodes = std::unique_ptr<xmlNodeSet>(xmlXPathNodeSetCreate(NULL));
+    }
+
+    std::unordered_set<std::string> matching_slice_ids;
+    for (int i = 0; i < matching_slice_nodes.get()->nodeNr; ++i) {
+        xmlNode* node = matching_slice_nodes.get()->nodeTab[i];
+        const std::string token(get_node_text(node));
+        for (auto id : split(token," ")) {
+            matching_slice_ids.insert(id);
+        }
+    }
+
+    for (int i = 0; i < target_slice_nodes.get()->nodeNr; ++i) {
+        xmlNode* node = target_slice_nodes.get()->nodeTab[i];
+        const std::string token(get_node_text(node));
+        for (auto id : split(token," ")) {
+            if (matching_slice_ids.find(id) != matching_slice_ids.end()) {
+                xmlXPathReturnBoolean(ctxt, true);
+                return;
+            }
+        }
+    }
+
+    xmlXPathReturnBoolean(ctxt, false);
 }
 
 void debug_print(xmlXPathParserContext* ctxt, int nargs) {
